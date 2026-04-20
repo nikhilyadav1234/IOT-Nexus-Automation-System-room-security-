@@ -1,0 +1,79 @@
+#define BLYNK_TEMPLATE_ID "TMPL3LTqjcPX_"
+#define BLYNK_TEMPLATE_NAME "project"
+#define BLYNK_AUTH_TOKEN "cYipDkB7Zuahr8YkzZDqzoW0fdGtN-de"
+
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+
+// WiFi
+char ssid[] = "Nikhil0309";
+char pass[] = "@@@@@@@@";
+
+// DHT
+#define DHTPIN D2
+#define DHTTYPE DHT11
+
+// Pins
+#define PIR D5
+#define GREEN_LED D6
+#define RED_LED D7
+#define BUZZER D1
+
+DHT dht(DHTPIN, DHTTYPE);
+BlynkTimer timer;
+
+// 🔒 alert control (spam rokne ke liye)
+bool alertSent = false;
+
+void sendData() {
+  float temp = dht.readTemperature();
+
+  if (isnan(temp)) {
+    Serial.println("DHT Error!");
+    return;
+  }
+
+  Serial.print("Temp: ");
+  Serial.println(temp);
+
+  // 🔥 MAIN LOGIC (29°C)
+  if (temp > 39) {
+    digitalWrite(RED_LED, HIGH);
+    digitalWrite(BUZZER, HIGH);
+
+    if (!alertSent) {
+      String msg = "🔥 Temp High: " + String(temp) + "°C";
+      Blynk.logEvent("alert", msg);
+      alertSent = true;
+    }
+  } else {
+    digitalWrite(RED_LED, LOW);
+    digitalWrite(BUZZER, LOW);
+    alertSent = false;
+  }
+
+  // Send temp to Blynk
+  Blynk.virtualWrite(V0, temp);
+}
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(RED_LED, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(BUZZER, LOW);
+
+  dht.begin();
+
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+
+  timer.setInterval(2000L, sendData);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+}
